@@ -131,7 +131,7 @@ async def text(msg: types.Message):
         await msg.answer(f"+{DAILY_REWARD} грн 🎁")
         return
 
-    # ----- CHECK BALANCE -----
+    # ----- BLOCK GAME IF 0 -----
     if text in ["🎲 Кості", "🎰 777", "💣 ALL IN"] and u["balance"] <= 0:
         await msg.answer("❌ У тебе 0 грн, гра недоступна")
         return
@@ -144,7 +144,6 @@ async def text(msg: types.Message):
 
     if uid in wait and wait[uid]["step"] == "dice_bet":
         if not text.isdigit():
-            await msg.answer("Обери ставку кнопкою")
             return
         bet = int(text)
         if bet > u["balance"]:
@@ -155,8 +154,6 @@ async def text(msg: types.Message):
         return
 
     if uid in wait and wait[uid]["step"] == "dice_num":
-        if not text.isdigit():
-            return
         num = int(text)
         bet = wait[uid]["bet"]
         roll = random.randint(1, 6)
@@ -181,9 +178,6 @@ async def text(msg: types.Message):
         return
 
     if uid in wait and wait[uid]["step"] == "slot":
-        if not text.isdigit():
-            await msg.answer("Обери ставку кнопкою")
-            return
         bet = int(text)
         if bet > u["balance"]:
             await msg.answer("💸 Мало грошей")
@@ -238,13 +232,57 @@ async def text(msg: types.Message):
         await msg.answer(f"🎖 Титул «{title}» куплено")
         return
 
-    # ----- TOP -----
+    # ----- TOP (STUB) -----
     if text == "🏆 Топ":
-        top = sorted(users.values(), key=lambda x: x["balance"], reverse=True)[:5]
-        out = "🏆 ТОП:\n"
-        for i, p in enumerate(top, 1):
-            out += f"{i}. {p['nick']} — {p['balance']} грн\n"
-        await msg.answer(out)
+        await msg.answer("🚧 Топ поки що в розробці")
+        return
+
+    # ----- PAY -----
+    if text.startswith("/pay"):
+        args = text.split()
+        if len(args) != 3:
+            await msg.answer("❌ Формат: /pay ID сума")
+            return
+        try:
+            target = args[1]
+            amount = int(args[2])
+        except:
+            return
+
+        if amount <= 0 or u["balance"] < amount:
+            await msg.answer("❌ Недостатньо грошей")
+            return
+
+        if target not in users:
+            await msg.answer("❌ Користувача нема")
+            return
+
+        u["balance"] -= amount
+        users[target]["balance"] += amount
+        save(users)
+
+        await msg.answer(f"💸 Переказано {amount} грн")
+
+        try:
+            await bot.send_message(
+                int(target),
+                f"💰 Тобі прийшло {amount} грн від {u['nick']}"
+            )
+        except:
+            pass
+        return
+
+    # ----- SEND -----
+    if text.startswith("/send"):
+        if msg.from_user.id != ADMIN_ID:
+            return
+        msg_text = text.replace("/send", "").strip()
+        for i in users:
+            try:
+                await bot.send_message(int(i), f"📢 {msg_text}")
+            except:
+                pass
+        await msg.answer("✅ Розіслано")
         return
 
     # ----- ADMIN GIVE -----
@@ -258,7 +296,6 @@ async def text(msg: types.Message):
 
     if uid in wait and wait[uid]["step"] == "give":
         if not text.isdigit():
-            await msg.answer("Введи число")
             return
         u["balance"] += int(text)
         save(users)
