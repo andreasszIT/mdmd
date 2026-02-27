@@ -159,7 +159,7 @@ async def text(msg: types.Message):
         roll = random.randint(1, 6)
 
         if roll == num:
-            win = bet * 5
+            win = bet * random.choice([2, 3, 5])
             u["balance"] += win
             res = f"🎲 {roll}\n🎉 +{win}"
         else:
@@ -232,9 +232,23 @@ async def text(msg: types.Message):
         await msg.answer(f"🎖 Титул «{title}» куплено")
         return
 
-    # ----- TOP (STUB) -----
+    # ----- TOP -----
     if text == "🏆 Топ":
-        await msg.answer("🚧 Топ поки що в розробці")
+        if not users:
+            await msg.answer("Топ пустий")
+            return
+
+        top = sorted(
+            users.values(),
+            key=lambda x: x.get("balance", 0),
+            reverse=True
+        )[:10]
+
+        out = "🏆 ТОП 10:\n\n"
+        for i, p in enumerate(top, 1):
+            out += f"{i}. {p['nick']} — {p['balance']} грн\n"
+
+        await msg.answer(out)
         return
 
     # ----- PAY -----
@@ -243,11 +257,12 @@ async def text(msg: types.Message):
         if len(args) != 3:
             await msg.answer("❌ Формат: /pay ID сума")
             return
-        try:
-            target = args[1]
-            amount = int(args[2])
-        except:
+
+        target = args[1]
+        if not args[2].isdigit():
             return
+
+        amount = int(args[2])
 
         if amount <= 0 or u["balance"] < amount:
             await msg.answer("❌ Недостатньо грошей")
@@ -276,12 +291,14 @@ async def text(msg: types.Message):
     if text.startswith("/send"):
         if msg.from_user.id != ADMIN_ID:
             return
+
         msg_text = text.replace("/send", "").strip()
         for i in users:
             try:
                 await bot.send_message(int(i), f"📢 {msg_text}")
             except:
                 pass
+
         await msg.answer("✅ Розіслано")
         return
 
